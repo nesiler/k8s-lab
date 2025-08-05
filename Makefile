@@ -56,7 +56,7 @@ cluster: ## K3d cluster'ı oluştur
 		--port "8089:8089@loadbalancer" \
 		--port "3000:3000@loadbalancer" \
 		--port "9090:9090@loadbalancer" \
-		--port "8001:8001@loadbalancer" \
+		--port "8001:443@loadbalancer" \
 		--agents 2 \
 		--k3s-arg "--disable=traefik@server:0" \
 		--image $(K3D_VERSION) \
