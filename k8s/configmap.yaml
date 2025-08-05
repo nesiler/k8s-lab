@@ -16,8 +16,8 @@ data:
   
   # Load test configuration
   LOCUST_HOST: "http://api-service"
-  LOCUST_USERS: "10"
-  LOCUST_SPAWN_RATE: "1"
+  LOCUST_USERS: "100"
+  LOCUST_SPAWN_RATE: "10"
   
   # Environment
   ENVIRONMENT: "test"

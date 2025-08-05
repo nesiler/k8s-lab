@@ -47,11 +47,11 @@ spec:
           mountPath: /var/lib/grafana
         resources:
           requests:
-            cpu: 100m
-            memory: 128Mi
-          limits:
             cpu: 200m
             memory: 256Mi
+          limits:
+            cpu: 400m
+            memory: 512Mi
         livenessProbe:
           httpGet:
             path: /api/health
