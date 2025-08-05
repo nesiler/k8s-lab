@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: locust-config
+  namespace: test-lab
+  labels:
+    app: locust
+data:
+  # Target configuration
+  LOCUST_HOST: "http://api-service"
+  LOCUST_MODE: "standalone"
+  
+  # Default test parameters
+  LOCUST_USERS: "10"
+  LOCUST_SPAWN_RATE: "1"
+  
+  # UI settings
+  LOCUST_WEB_HOST: "0.0.0.0"
+  LOCUST_WEB_PORT: "8089"
+  
+  # Performance settings
+  LOCUST_LOGLEVEL: "INFO"
+  LOCUST_ONLY_SUMMARY: "false"
+  
+  # Test configuration
+  LOCUST_HEADLESS: "false"
+  LOCUST_PRINT_STATS: "true"

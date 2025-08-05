@@ -1,0 +1,92 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: test-lab-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: testdb
+    ports:
+      - "15432:5432"  # Changed from 5432 to avoid conflicts
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # FastAPI Application
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: test-lab-api
+    environment:
+      DATABASE_URL: "postgresql+asyncpg://postgres:postgres@postgres:5432/testdb"
+    ports:
+      - "18000:8000"  # Changed from 8000 to avoid conflicts
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./api:/app
+    command: uvicorn main:app --reload --host 0.0.0.0 --port 8000
+
+  # Locust Load Tester
+  locust:
+    build:
+      context: ./load-test
+      dockerfile: Dockerfile
+    container_name: test-lab-locust
+    environment:
+      LOCUST_HOST: "http://api:8000"
+    ports:
+      - "18089:8089"  # Changed from 8089 to avoid conflicts
+    depends_on:
+      - api
+    volumes:
+      - ./load-test:/app
+    command: locust --host http://api:8000
+
+  # Prometheus
+  prometheus:
+    image: prom/prometheus:v2.48.1
+    container_name: test-lab-prometheus
+    ports:
+      - "19090:9090"  # Changed from 9090 to avoid conflicts
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-lifecycle'
+
+  # Grafana
+  grafana:
+    image: grafana/grafana:10.2.3
+    container_name: test-lab-grafana
+    ports:
+      - "13000:3000"  # Changed from 3000 to avoid conflicts
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+
+volumes:
+  postgres_data:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  default:
+    name: test-lab-network

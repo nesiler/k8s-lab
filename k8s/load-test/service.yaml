@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: locust-service
+  namespace: test-lab
+  labels:
+    app: locust
+    component: load-tester
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 8089
+    targetPort: 8089
+    protocol: TCP
+    name: web
+  - port: 5557
+    targetPort: 5557
+    protocol: TCP
+    name: worker
+  selector:
+    app: locust

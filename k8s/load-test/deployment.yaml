@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: locust
+  namespace: test-lab
+  labels:
+    app: locust
+    component: load-tester
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: locust
+  template:
+    metadata:
+      labels:
+        app: locust
+        component: load-tester
+    spec:
+      containers:
+      - name: locust
+        image: k8s-test-lab/locust:latest
+        imagePullPolicy: IfNotPresent  # Changed from Never to IfNotPresent
+        ports:
+        - containerPort: 8089
+          name: web
+          protocol: TCP
+        - containerPort: 5557
+          name: worker
+          protocol: TCP
+        envFrom:
+        - configMapRef:
+            name: locust-config
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 8089
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 8089
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3

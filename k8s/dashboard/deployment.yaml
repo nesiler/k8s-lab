@@ -1,0 +1,3 @@
+# Kubernetes Dashboard deployment is handled by the official manifest
+# Downloaded from: https://raw.githubusercontent.com/kubernetes/dashboard/v2.7.0/aio/deploy/recommended.yaml
+# This file is a placeholder for consistency

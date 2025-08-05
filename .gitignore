@@ -1,0 +1,79 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.env
+*.egg-info/
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Kubernetes
+*.kubeconfig
+kubeconfig
+.kube/
+
+# Docker
+.docker/
+
+# Logs
+*.log
+logs/
+*.out
+
+# Test results
+htmlcov/
+.coverage
+.pytest_cache/
+test-results/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.bak
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Monitoring data
+prometheus-data/
+grafana-data/
+
+# Load test results
+locust-reports/
+results/
+
+# Local development
+.local/
+.cache/
+
+# Security
+*.key
+*.crt
+*.pem
+secrets/
+credentials/
+
+# OS
+Thumbs.db
+.Spotlight-V100
+.Trashes
+
+# Helm
+charts/*.tgz
+requirements.lock
