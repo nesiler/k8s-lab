@@ -98,6 +98,9 @@ logs: ## Tüm pod loglarını göster
 watch: ## Pod durumlarını canlı izle
 	@watch -n 2 "kubectl get pods -n $(NAMESPACE) && echo '---' && kubectl get hpa -n $(NAMESPACE)"
 
+test-metrics: ## Test metrics endpoints
+	@bash scripts/test-metrics.sh
+
 # Yardımcı komutlar
 check: ## Bağımlılıkları kontrol et
 	@bash scripts/check-deps.sh

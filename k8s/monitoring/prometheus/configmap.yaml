@@ -116,7 +116,7 @@ data:
         source_labels: [__meta_kubernetes_service_name]
         target_label: job
     
-    # Specific job for our API
+    # Specific job for our API - FIXED
     - job_name: 'test-lab-api'
       kubernetes_sd_configs:
       - role: pod
@@ -126,17 +126,37 @@ data:
       - source_labels: [__meta_kubernetes_pod_label_app]
         action: keep
         regex: api
-      - source_labels: [__address__]
+      - source_labels: [__meta_kubernetes_pod_ip]
         action: replace
-        regex: ([^:]+)(?::\d+)?
-        replacement: $1:8000
         target_label: __address__
+        replacement: $1:8000
       - source_labels: [__meta_kubernetes_pod_name]
         action: replace
         target_label: instance
       - action: replace
         target_label: __metrics_path__
         replacement: /metrics
+    
+    # Scrape kube-state-metrics
+    - job_name: 'kube-state-metrics'
+      kubernetes_sd_configs:
+      - role: service
+      relabel_configs:
+      - source_labels: [__meta_kubernetes_service_name]
+        action: keep
+        regex: kube-state-metrics
+      - source_labels: [__meta_kubernetes_service_port_name]
+        action: keep
+        regex: http-metrics
+    
+    # Scrape node-exporter
+    - job_name: 'node-exporter'
+      kubernetes_sd_configs:
+      - role: service
+      relabel_configs:
+      - source_labels: [__meta_kubernetes_service_name]
+        action: keep
+        regex: node-exporter
     
     alerting:
       alertmanagers:

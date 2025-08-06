@@ -180,7 +180,7 @@ data:
           "pluginVersion": "8.0.0",
           "targets": [
             {
-              "expr": "sum(kube_deployment_status_replicas{namespace=\"test-lab\",deployment=\"api\"})",
+              "expr": "sum(kube_deployment_status_replicas_available{namespace=\"test-lab\",deployment=\"api\"})",
               "refId": "A"
             }
           ],
@@ -260,7 +260,7 @@ data:
           "pluginVersion": "8.0.0",
           "targets": [
             {
-              "expr": "avg(rate(container_cpu_usage_seconds_total{namespace=\"test-lab\",pod=~\"api-.*\"}[5m])) * 100",
+              "expr": "avg(rate(container_cpu_usage_seconds_total{namespace=\"test-lab\",container=\"api\"}[5m])) * 100",
               "refId": "A"
             }
           ],

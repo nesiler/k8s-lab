@@ -112,6 +112,14 @@ kubectl apply -f k8s/monitoring/grafana/datasource.yaml
 kubectl apply -f k8s/monitoring/grafana/deployment.yaml
 kubectl apply -f k8s/monitoring/grafana/service.yaml
 
+# Kube-state-metrics
+echo -e "${BLUE}  → Kube-state-metrics kuruluyor...${NC}"
+kubectl apply -f k8s/monitoring/kube-state-metrics.yaml
+
+# Node-exporter
+echo -e "${BLUE}  → Node-exporter kuruluyor...${NC}"
+kubectl apply -f k8s/monitoring/node-exporter.yaml
+
 # 7. Kubernetes Dashboard kurulumu
 echo -e "${GREEN}🎨 Kubernetes Dashboard kurulumu...${NC}"
 kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/v2.7.0/aio/deploy/recommended.yaml

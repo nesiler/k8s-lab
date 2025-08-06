@@ -11,6 +11,4 @@ spec:
   resources:
     requests:
       storage: 30Gi
-  minReplicas: 2
-  maxReplicas: 5
   storageClassName: local-path  # k3d default storage class
