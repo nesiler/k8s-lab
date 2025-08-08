@@ -11,7 +11,7 @@ spec:
     kind: Deployment
     name: api
   minReplicas: 2
-  maxReplicas: 30
+  maxReplicas: 15
   metrics:
   - type: Resource
     resource:
@@ -24,25 +24,25 @@ spec:
       name: memory
       target:
         type: Utilization
-        averageUtilization: 70
+        averageUtilization: 50
   behavior:
     scaleDown:
-      stabilizationWindowSeconds: 60
+      stabilizationWindowSeconds: 30
       policies:
       - type: Percent
-        value: 50
-        periodSeconds: 60
+        value: 40
+        periodSeconds: 30
       - type: Pods
         value: 2
-        periodSeconds: 60
+        periodSeconds: 30
       selectPolicy: Min
     scaleUp:
       stabilizationWindowSeconds: 30
       policies:
       - type: Percent
-        value: 100
+        value: 50
         periodSeconds: 30
       - type: Pods
         value: 4
         periodSeconds: 30
-      selectPolicy: Max
+      selectPolicy: Min
