@@ -1,27 +1,24 @@
-FROM python:3.11-slim
+FROM golang:1.22 AS builder
 
-# Çalışma dizini
-WORKDIR /app
+WORKDIR /src
 
-# Sistem bağımlılıkları
-RUN apt-get update && apt-get install -y \
-    gcc \
-    postgresql-client \
-    && rm -rf /var/lib/apt/lists/*
+# Mod dosyalarını kopyala ve bağımlılıkları indir
+COPY go.mod ./
+RUN --mount=type=cache,target=/go/pkg/mod go mod download
 
-# Python bağımlılıkları
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Uygulama kodları
+# Kaynak kodu kopyala ve derle
 COPY . .
+# Ensure go.sum is generated from imports
+RUN --mount=type=cache,target=/go/pkg/mod go mod tidy
+RUN --mount=type=cache,target=/go/pkg/mod \
+    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags "-s -w" -o /out/api ./main.go
 
-# Port
+# Minimal runtime image
+FROM gcr.io/distroless/static:nonroot
+
+WORKDIR /
+COPY --from=builder /out/api /api
+
 EXPOSE 8000
-
-# Kullanıcı oluştur (güvenlik için)
-RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
-USER appuser
-
-# Başlatma komutu
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
+USER nonroot:nonroot
+ENTRYPOINT ["/api"]

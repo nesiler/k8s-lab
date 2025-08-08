@@ -24,7 +24,7 @@ spec:
       containers:
       - name: api
         image: k8s-test-lab/api:latest
-        imagePullPolicy: IfNotPresent  # Changed from Never to IfNotPresent
+        imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8000
           name: http
@@ -34,11 +34,11 @@ spec:
             name: api-config
         resources:
           requests:
-            memory: "256Mi"
-            cpu: "100m"
+            memory: "128Mi"
+            cpu: "50m"
           limits:
-            memory: "512Mi"
-            cpu: "500m"
+            memory: "256Mi"
+            cpu: "200m"
         livenessProbe:
           httpGet:
             path: /health

@@ -7,7 +7,7 @@ metadata:
     app: api
 data:
   # Database connection
-  DATABASE_URL: "postgresql+asyncpg://postgres:postgres@postgres-service:5432/testdb"
+  DATABASE_URL: "postgres://postgres:postgres@postgres-service:5432/testdb?sslmode=disable"
   
   # API settings
   API_TITLE: "Kubernetes Test Lab API"
