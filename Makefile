@@ -1,7 +1,8 @@
 # Kubernetes Test Lab Makefile
 # Tek komutla tüm sistemi yönetmek için
 
-.PHONY: help start stop clean status logs watch check cluster deploy shell
+.PHONY: help start stop clean status logs watch check cluster deploy shell \
+	update update-k8s update-api restart-api restart-monitoring
 
 # Varsayılan hedef
 .DEFAULT_GOAL := help
@@ -72,6 +73,43 @@ deploy: ## Tüm uygulamaları deploy et
 	@echo "$(GREEN)📦 Uygulamalar deploy ediliyor...$(NC)"
 	@bash scripts/setup.sh
 	@echo "$(GREEN)✅ Deployment tamamlandı$(NC)"
+
+# Hızlı güncelleme komutları (temiz başlatmadan)
+update: update-k8s ## Değişen YAML'ları hızlı uygula (temizlemeden)
+	@echo "$(GREEN)✅ K8s manifestleri uygulandı$(NC)"
+	@$(MAKE) status
+
+update-k8s: ## Tüm k8s manifestlerini idempotent olarak uygula
+	@echo "$(GREEN)📦 K8s manifestleri uygulanıyor...$(NC)"
+	@kubectl apply -f k8s/namespace.yaml
+	@kubectl apply -f k8s/configmap.yaml
+	@kubectl apply -f k8s/database/
+	@kubectl apply -f k8s/api/
+	@kubectl apply -f k8s/load-test/
+	@kubectl apply -f k8s/monitoring/prometheus/
+	@kubectl apply -f k8s/monitoring/grafana/
+	@kubectl apply -f k8s/monitoring/kube-state-metrics.yaml
+	@kubectl apply -f k8s/monitoring/node-exporter.yaml
+	@kubectl apply -f k8s/dashboard/
+
+update-api: ## Sadece API'yi güncelle (image build+import + rollout restart)
+	@echo "$(GREEN)🐳 API image build ediliyor...$(NC)"
+	@docker build -t k8s-test-lab/api:latest ./api
+	@echo "$(GREEN)📦 Image k3d cluster'a import ediliyor...$(NC)"
+	@k3d image import k8s-test-lab/api:latest -c $(CLUSTER_NAME)
+	@echo "$(GREEN)🔁 API rollout restart$(NC)"
+	@kubectl rollout restart deployment/api -n $(NAMESPACE)
+	@kubectl rollout status deployment/api -n $(NAMESPACE) --timeout=180s
+	@echo "$(GREEN)✅ API güncellendi$(NC)"
+
+restart-api: ## API deployment'ını yeniden başlat
+	@kubectl rollout restart deployment/api -n $(NAMESPACE)
+	@kubectl rollout status deployment/api -n $(NAMESPACE) --timeout=180s
+
+restart-monitoring: ## Prometheus ve Grafana'yı yeniden başlat
+	@kubectl rollout restart deployment/prometheus -n $(NAMESPACE) || true
+	@kubectl rollout restart deployment/grafana -n $(NAMESPACE) || true
+	@kubectl rollout status deployment/grafana -n $(NAMESPACE) --timeout=180s || true
 
 # Monitoring komutları
 status: ## Sistem durumunu göster
