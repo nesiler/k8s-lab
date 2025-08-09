@@ -40,85 +40,163 @@ data:
       "id": null,
       "links": [],
       "panels": [
+        {"type": "row", "title": "Summary", "gridPos": {"h": 1, "w": 24, "x": 0, "y": 0}},
         {
           "datasource": "Prometheus",
-          "type": "timeseries",
-          "title": "Total CPU Usage (Cores)",
-          "fieldConfig": {"defaults": {"unit": "cores"}},
-          "targets": [
-            {"expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"test-lab\"}[5m]))", "refId": "A"}
-          ],
-          "gridPos": {"h": 6, "w": 12, "x": 0, "y": 0}
+          "type": "stat",
+          "title": "API RPS (total)",
+          "fieldConfig": {"defaults": {"unit": "reqps"}},
+          "targets": [{"expr": "sum(rate(api_requests_total[1m]))", "refId": "A"}],
+          "gridPos": {"h": 4, "w": 6, "x": 0, "y": 1}
         },
         {
           "datasource": "Prometheus",
-          "type": "timeseries",
-          "title": "Total Memory Usage (GB)",
-          "fieldConfig": {"defaults": {"unit": "bytes", "decimals": 2}},
-          "targets": [
-            {"expr": "sum(container_memory_usage_bytes{namespace=\"test-lab\"})", "refId": "A"}
-          ],
-          "gridPos": {"h": 6, "w": 12, "x": 12, "y": 0}
+          "type": "stat",
+          "title": "API RPS (success)",
+          "fieldConfig": {"defaults": {"unit": "reqps"}},
+          "targets": [{"expr": "sum(rate(api_requests_success_total[1m]))", "refId": "A"}],
+          "gridPos": {"h": 4, "w": 6, "x": 6, "y": 1}
         },
         {
           "datasource": "Prometheus",
+          "type": "stat",
+          "title": "API RPS (errors)",
+          "fieldConfig": {"defaults": {"unit": "reqps"}},
+          "targets": [{"expr": "sum(rate(api_requests_failed_total[1m]))", "refId": "A"}],
+          "gridPos": {"h": 4, "w": 6, "x": 12, "y": 1}
+        },
+        {
+          "datasource": "Prometheus",
+          "type": "stat",
+          "title": "Active Requests",
+          "fieldConfig": {"defaults": {"unit": "none"}},
+          "targets": [{"expr": "sum(api_active_requests)", "refId": "A"}],
+          "gridPos": {"h": 4, "w": 6, "x": 18, "y": 1}
+        },
+        {"type": "row", "title": "API Latency & Throughput", "gridPos": {"h": 1, "w": 24, "x": 0, "y": 5}},
+        {
+          "datasource": "Prometheus",
           "type": "timeseries",
-          "title": "Total API Requests (Rate)",
+          "title": "API Requests Rate (by status)",
           "fieldConfig": {"defaults": {"unit": "reqps"}},
           "targets": [
-            {"expr": "sum(rate(api_requests_total[1m]))", "refId": "A"}
+            {"expr": "sum by (status)(rate(api_requests_total[1m]))", "refId": "A"}
           ],
           "gridPos": {"h": 6, "w": 12, "x": 0, "y": 6}
         },
         {
           "datasource": "Prometheus",
           "type": "timeseries",
-          "title": "Live Pods Count (Timeline)",
-          "fieldConfig": {"defaults": {"unit": "none"}},
+          "title": "API p95 Latency (s)",
+          "fieldConfig": {"defaults": {"unit": "s"}},
           "targets": [
-            {"expr": "sum(kube_pod_status_phase{namespace=\"test-lab\",phase=\"Running\"})", "refId": "A"}
+            {"expr": "histogram_quantile(0.95, sum(rate(api_request_duration_seconds_bucket[5m])) by (le))", "refId": "A"}
           ],
           "gridPos": {"h": 6, "w": 12, "x": 12, "y": 6}
         },
+        {"type": "row", "title": "Resources", "gridPos": {"h": 1, "w": 24, "x": 0, "y": 12}},
         {
           "datasource": "Prometheus",
-          "type": "barchart",
-          "title": "System CPU Usage by Service (Cores)",
+          "type": "timeseries",
+          "title": "CPU Usage (namespace total, cores)",
           "fieldConfig": {"defaults": {"unit": "cores"}},
           "targets": [
-            {"expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"test-lab\"}[5m])) by (container)", "refId": "A"}
+            {"expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"test-lab\",container!=\"POD\"}[2m]))", "refId": "A"}
           ],
-          "gridPos": {"h": 6, "w": 12, "x": 0, "y": 12}
+          "gridPos": {"h": 6, "w": 12, "x": 0, "y": 13}
+        },
+        {
+          "datasource": "Prometheus",
+          "type": "timeseries",
+          "title": "Memory Usage (namespace total)",
+          "fieldConfig": {"defaults": {"unit": "bytes"}},
+          "targets": [
+            {"expr": "sum(container_memory_usage_bytes{namespace=\"test-lab\",container!=\"POD\"})", "refId": "A"}
+          ],
+          "gridPos": {"h": 6, "w": 12, "x": 12, "y": 13}
+        },
+        {
+          "datasource": "Prometheus",
+          "type": "timeseries",
+          "title": "API CPU by Pod (cores)",
+          "fieldConfig": {"defaults": {"unit": "cores"}},
+          "targets": [
+            {"expr": "sum by (pod)(rate(container_cpu_usage_seconds_total{namespace=\"test-lab\",pod=~\"api-.*\",container!=\"POD\"}[2m]))", "refId": "A"}
+          ],
+          "gridPos": {"h": 6, "w": 12, "x": 0, "y": 19}
+        },
+        {
+          "datasource": "Prometheus",
+          "type": "timeseries",
+          "title": "API Memory by Pod",
+          "fieldConfig": {"defaults": {"unit": "bytes"}},
+          "targets": [
+            {"expr": "sum by (pod)(container_memory_usage_bytes{namespace=\"test-lab\",pod=~\"api-.*\",container!=\"POD\"})", "refId": "A"}
+          ],
+          "gridPos": {"h": 6, "w": 12, "x": 12, "y": 19}
+        },
+        {"type": "row", "title": "Kubernetes State", "gridPos": {"h": 1, "w": 24, "x": 0, "y": 25}},
+        {
+          "datasource": "Prometheus",
+          "type": "stat",
+          "title": "Running Pods (namespace)",
+          "targets": [{"expr": "sum(kube_pod_status_phase{namespace=\"test-lab\",phase=\"Running\"})", "refId": "A"}],
+          "gridPos": {"h": 4, "w": 6, "x": 0, "y": 26}
+        },
+        {
+          "datasource": "Prometheus",
+          "type": "stat",
+          "title": "Total Restarts (namespace)",
+          "targets": [{"expr": "sum(kube_pod_container_status_restarts_total{namespace=\"test-lab\"})", "refId": "A"}],
+          "gridPos": {"h": 4, "w": 6, "x": 6, "y": 26}
+        },
+        {
+          "datasource": "Prometheus",
+          "type": "timeseries",
+          "title": "Recent Restarts (by pod, 5m)",
+          "targets": [{"expr": "sum by (pod)(increase(kube_pod_container_status_restarts_total{namespace=\"test-lab\"}[5m]))", "refId": "A"}],
+          "gridPos": {"h": 6, "w": 12, "x": 12, "y": 26}
+        },
+        {
+          "datasource": "Prometheus",
+          "type": "timeseries",
+          "title": "HPA Desired vs Available Replicas (API)",
+          "targets": [
+            {"expr": "kube_horizontalpodautoscaler_status_desired_replicas{namespace=\"test-lab\",horizontalpodautoscaler=\"api-hpa\"}", "refId": "A"},
+            {"expr": "kube_deployment_status_replicas_available{namespace=\"test-lab\",deployment=\"api\"}", "refId": "B"}
+          ],
+          "gridPos": {"h": 6, "w": 12, "x": 0, "y": 30}
+        },
+        {"type": "row", "title": "Database", "gridPos": {"h": 1, "w": 24, "x": 0, "y": 36}},
+        {
+          "datasource": "Prometheus",
+          "type": "stat",
+          "title": "DB Size (bytes)",
+          "fieldConfig": {"defaults": {"unit": "bytes"}},
+          "targets": [{"expr": "db_size_bytes", "refId": "A"}],
+          "gridPos": {"h": 4, "w": 6, "x": 0, "y": 37}
+        },
+        {
+          "datasource": "Prometheus",
+          "type": "stat",
+          "title": "DB Rows (approx)",
+          "targets": [{"expr": "db_rows", "refId": "A"}],
+          "gridPos": {"h": 4, "w": 6, "x": 6, "y": 37}
         },
         {
           "datasource": "Prometheus",
           "type": "barchart",
-          "title": "System Memory Usage by Service (MB)",
-          "fieldConfig": {"defaults": {"unit": "bytes", "decimals": 2}},
-          "targets": [
-            {"expr": "sum(container_memory_usage_bytes{namespace=\"test-lab\"}) by (container)", "refId": "A"}
-          ],
-          "gridPos": {"h": 6, "w": 12, "x": 12, "y": 12}
+          "title": "DB Ops Rate by Operation",
+          "targets": [{"expr": "sum by (operation)(rate(db_operations_total[1m]))", "refId": "A"}],
+          "gridPos": {"h": 6, "w": 12, "x": 12, "y": 37}
         },
+        {"type": "row", "title": "Errors by Endpoint", "gridPos": {"h": 1, "w": 24, "x": 0, "y": 43}},
         {
           "datasource": "Prometheus",
-          "type": "table",
-          "title": "Crashed Pods (Restarts)",
-          "fieldConfig": {"defaults": {"unit": "none"}},
-          "targets": [
-            {"expr": "sum(kube_pod_container_status_restarts_total{namespace=\"test-lab\"}) by (pod, container)", "refId": "A"}
-          ],
-          "gridPos": {"h": 6, "w": 12, "x": 0, "y": 18}
-        },
-        {
-          "datasource": "Prometheus",
-          "type": "table",
-          "title": "Failed Pods",
-          "fieldConfig": {"defaults": {"unit": "none"}},
-          "targets": [
-            {"expr": "count(kube_pod_status_phase{namespace=\"test-lab\",phase=\"Failed\"}) by (pod)", "refId": "A"}
-          ],
-          "gridPos": {"h": 6, "w": 12, "x": 12, "y": 18}
+          "type": "barchart",
+          "title": "Error Rate (by endpoint)",
+          "targets": [{"expr": "sum by (endpoint)(rate(api_requests_total{status=~\"4..|5..\"}[5m]))", "refId": "A"}],
+          "gridPos": {"h": 6, "w": 24, "x": 0, "y": 44}
         }
       ],
       "refresh": "5s",
@@ -131,5 +209,5 @@ data:
       "timezone": "",
       "title": "Kubernetes Test Lab Dashboard",
       "uid": "k8s-test-lab",
-      "version": 1
+      "version": 2
     }
