@@ -1,56 +1,56 @@
 # Kubernetes Test Lab Makefile
-# Tek komutla tüm sistemi yönetmek için
+# Manage the entire system with simple make commands
 
 .PHONY: help start stop clean status logs watch check cluster deploy shell \
 	update update-k8s update-api restart-api restart-monitoring
 
-# Varsayılan hedef
+# Default target
 .DEFAULT_GOAL := help
 
-# Değişkenler
+# Variables
 CLUSTER_NAME = k8s-test-lab
 NAMESPACE = test-lab
 KUBECONFIG = $(HOME)/.kube/config
 K3D_VERSION = rancher/k3s:v1.28.5-k3s1
 
-# Renkler
-GREEN = \033[0;32m
-RED = \033[0;31m
-YELLOW = \033[0;33m
-NC = \033[0m # No Color
+# Colors
+ GREEN = \033[0;32m
+ RED = \033[0;31m
+ YELLOW = \033[0;33m
+ NC = \033[0m # No Color
 
 # Help
-help: ## Bu yardım mesajını göster
-	@echo "Kubernetes Test Lab - Komutlar:"
+help: ## Show this help message
+	@echo "Kubernetes Test Lab - Commands:"
 	@echo ""
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  $(GREEN)%-15s$(NC) %s\n", $$1, $$2}'
 	@echo ""
-	@echo "Kullanım: make <komut>"
+	@echo "Usage: make <command>"
 
 # Ana komutlar
-start: check ## Tüm sistemi başlat (cluster + uygulamalar)
-	@echo "$(GREEN)🚀 Kubernetes Test Lab başlatılıyor...$(NC)"
+start: check ## Start the whole system (cluster + apps)
+	@echo "$(GREEN)🚀 Starting Kubernetes Test Lab...$(NC)"
 	@bash scripts/check-deps.sh
 	@$(MAKE) cluster
 	@$(MAKE) deploy
 	@$(MAKE) wait-ready
 	@$(MAKE) show-urls
-	@echo "$(GREEN)✅ Sistem hazır!$(NC)"
+	@echo "$(GREEN)✅ System is ready!$(NC)"
 
-stop: ## Sistemi durdur (uygulamaları kaldır, cluster'ı koru)
-	@echo "$(YELLOW)🛑 Sistem durduruluyor...$(NC)"
+stop: ## Stop the system (delete apps, keep cluster)
+	@echo "$(YELLOW)🛑 Stopping system...$(NC)"
 	@kubectl delete namespace $(NAMESPACE) --ignore-not-found=true
-	@echo "$(GREEN)✅ Sistem durduruldu$(NC)"
+	@echo "$(GREEN)✅ System stopped$(NC)"
 
-clean: ## Her şeyi temizle (cluster dahil)
-	@echo "$(RED)🧹 Temizlik yapılıyor...$(NC)"
+clean: ## Clean everything (including cluster)
+	@echo "$(RED)🧹 Cleaning up...$(NC)"
 	@k3d cluster delete $(CLUSTER_NAME) 2>/dev/null || true
 	@docker rm -f $$(docker ps -aq --filter "label=app=k8s-test-lab") 2>/dev/null || true
-	@echo "$(GREEN)✅ Temizlik tamamlandı$(NC)"
+	@echo "$(GREEN)✅ Cleanup completed$(NC)"
 
 # Cluster yönetimi
-cluster: ## K3d cluster'ı oluştur
-	@echo "$(GREEN)🔧 K3d cluster oluşturuluyor...$(NC)"
+cluster: ## Create the k3d cluster
+	@echo "$(GREEN)🔧 Creating k3d cluster...$(NC)"
 	@k3d cluster create $(CLUSTER_NAME) \
 		--api-port 6550 \
 		--port "8080:80@loadbalancer" \
@@ -63,24 +63,24 @@ cluster: ## K3d cluster'ı oluştur
 		--image $(K3D_VERSION) \
 		--wait
 	@kubectl config use-context k3d-$(CLUSTER_NAME)
-	@echo "$(GREEN)✅ Cluster hazır$(NC)"
-	@echo "$(YELLOW)⏳ Cluster'ın tamamen hazır olması bekleniyor...$(NC)"
+	@echo "$(GREEN)✅ Cluster is ready$(NC)"
+	@echo "$(YELLOW)⏳ Waiting for cluster nodes to be ready...$(NC)"
 	@sleep 10
 	@kubectl wait --for=condition=ready nodes --all --timeout=60s || true
 
 # Deployment
-deploy: ## Tüm uygulamaları deploy et
-	@echo "$(GREEN)📦 Uygulamalar deploy ediliyor...$(NC)"
+deploy: ## Deploy all applications
+	@echo "$(GREEN)📦 Deploying applications...$(NC)"
 	@bash scripts/setup.sh
-	@echo "$(GREEN)✅ Deployment tamamlandı$(NC)"
+	@echo "$(GREEN)✅ Deployment completed$(NC)"
 
-# Hızlı güncelleme komutları (temiz başlatmadan)
-update: update-k8s ## Değişen YAML'ları hızlı uygula (temizlemeden)
-	@echo "$(GREEN)✅ K8s manifestleri uygulandı$(NC)"
+# Fast update commands (without full restart)
+update: update-k8s ## Idempotently apply changed YAML manifests
+	@echo "$(GREEN)✅ Kubernetes manifests applied$(NC)"
 	@$(MAKE) status
 
-update-k8s: ## Tüm k8s manifestlerini idempotent olarak uygula
-	@echo "$(GREEN)📦 K8s manifestleri uygulanıyor...$(NC)"
+update-k8s: ## Apply all Kubernetes manifests idempotently
+	@echo "$(GREEN)📦 Applying Kubernetes manifests...$(NC)"
 	@kubectl apply -f k8s/namespace.yaml
 	@kubectl apply -f k8s/configmap.yaml
 	@kubectl apply -f k8s/database/
@@ -92,34 +92,34 @@ update-k8s: ## Tüm k8s manifestlerini idempotent olarak uygula
 	@kubectl apply -f k8s/monitoring/node-exporter.yaml
 	@kubectl apply -f k8s/dashboard/
 
-update-api: ## Sadece API'yi güncelle (image build+import + rollout restart)
-	@echo "$(GREEN)🐳 API image build ediliyor...$(NC)"
+update-api: ## Update only the API (build image + import + rollout restart)
+	@echo "$(GREEN)🐳 Building API image...$(NC)"
 	@docker build -t k8s-test-lab/api:latest ./api
-	@echo "$(GREEN)📦 Image k3d cluster'a import ediliyor...$(NC)"
+	@echo "$(GREEN)📦 Importing image into k3d cluster...$(NC)"
 	@k3d image import k8s-test-lab/api:latest -c $(CLUSTER_NAME)
-	@echo "$(GREEN)🔁 API rollout restart$(NC)"
+	@echo "$(GREEN)🔁 Rolling out API restart$(NC)"
 	@kubectl rollout restart deployment/api -n $(NAMESPACE)
 	@kubectl rollout status deployment/api -n $(NAMESPACE) --timeout=180s
-	@echo "$(GREEN)✅ API güncellendi$(NC)"
+	@echo "$(GREEN)✅ API updated$(NC)"
 
-restart-api: ## API deployment'ını yeniden başlat
+restart-api: ## Restart the API deployment
 	@kubectl rollout restart deployment/api -n $(NAMESPACE)
 	@kubectl rollout status deployment/api -n $(NAMESPACE) --timeout=180s
 
-restart-monitoring: ## Prometheus ve Grafana'yı yeniden başlat
+restart-monitoring: ## Restart Prometheus and Grafana
 	@kubectl rollout restart deployment/prometheus -n $(NAMESPACE) || true
 	@kubectl rollout restart deployment/grafana -n $(NAMESPACE) || true
 	@kubectl rollout status deployment/grafana -n $(NAMESPACE) --timeout=180s || true
 
-# Monitoring komutları
-status: ## Sistem durumunu göster
-	@echo "$(GREEN)📊 Sistem Durumu:$(NC)"
+# Monitoring commands
+status: ## Show system status
+	@echo "$(GREEN)📊 System Status:$(NC)"
 	@echo ""
 	@echo "Cluster:"
 	@k3d cluster list | grep $(CLUSTER_NAME) || echo "Cluster bulunamadı"
 	@echo ""
 	@echo "Pods ($(NAMESPACE) namespace):"
-	@kubectl get pods -n $(NAMESPACE) 2>/dev/null || echo "Namespace bulunamadı"
+	@kubectl get pods -n $(NAMESPACE) 2>/dev/null || echo "Namespace not found"
 	@echo ""
 	@echo "Services:"
 	@kubectl get svc -n $(NAMESPACE) 2>/dev/null || true
@@ -127,101 +127,100 @@ status: ## Sistem durumunu göster
 	@echo "HPA:"
 	@kubectl get hpa -n $(NAMESPACE) 2>/dev/null || true
 
-logs: ## Tüm pod loglarını göster
-	@echo "$(GREEN)📜 Pod logları:$(NC)"
+logs: ## Show pod logs
+	@echo "$(GREEN)📜 Pod logs:$(NC)"
 	@kubectl logs -n $(NAMESPACE) -l app=api --tail=50 || true
 	@echo "---"
 	@kubectl logs -n $(NAMESPACE) -l app=postgres --tail=50 || true
 
-watch: ## Pod durumlarını canlı izle
+watch: ## Live watch pod and HPA status
 	@watch -n 2 "kubectl get pods -n $(NAMESPACE) && echo '---' && kubectl get hpa -n $(NAMESPACE)"
 
 test-metrics: ## Test metrics endpoints
 	@bash scripts/test-metrics.sh
 
-# Yardımcı komutlar
-check: ## Bağımlılıkları kontrol et
+# Utility commands
+check: ## Check dependencies
 	@bash scripts/check-deps.sh
 
-shell: ## API pod'una shell erişimi
+shell: ## Shell into API pod
 	@kubectl exec -it -n $(NAMESPACE) $$(kubectl get pod -n $(NAMESPACE) -l app=api -o jsonpath="{.items[0].metadata.name}") -- /bin/bash
 
-db-shell: ## Database pod'una shell erişimi
+db-shell: ## Shell into database pod
 	@kubectl exec -it -n $(NAMESPACE) $$(kubectl get pod -n $(NAMESPACE) -l app=postgres -o jsonpath="{.items[0].metadata.name}") -- psql -U postgres -d testdb
 
-port-forward: ## Manuel port forwarding
-	@echo "$(GREEN)🔌 Port forwarding başlatılıyor...$(NC)"
+port-forward: ## Manual port forwarding
+	@echo "$(GREEN)🔌 Starting port forwarding...$(NC)"
 	@kubectl port-forward -n $(NAMESPACE) svc/api-service 8080:80 &
 	@kubectl port-forward -n $(NAMESPACE) svc/locust-service 8089:8089 &
 	@kubectl port-forward -n $(NAMESPACE) svc/grafana 3000:3000 &
 	@kubectl port-forward -n kubernetes-dashboard svc/kubernetes-dashboard 8001:443 &
 
 # Test komutları
-test-api: ## API'yi test et
-	@echo "$(GREEN)🧪 API test ediliyor...$(NC)"
-	@curl -s http://localhost:8080/health | jq . || echo "API erişilemiyor"
-	@curl -s http://localhost:8080/docs | head -n 5 || true
+test-api: ## Test API
+	@echo "$(GREEN)🧪 Testing API...$(NC)"
+	@curl -s http://localhost:8080/health | jq . || echo "API not reachable"
+	@curl -s http://localhost:9090/api/v1/targets | jq '.data.activeTargets | length' || true
 
-load-test: ## Basit load test başlat
-	@echo "$(GREEN)🔥 Load test başlatılıyor...$(NC)"
+load-test: ## Start a simple load test
+	@echo "$(GREEN)🔥 Starting load test...$(NC)"
 	@echo "Locust UI: http://localhost:8089"
 	@if command -v open >/dev/null 2>&1; then \
 		open http://localhost:8089; \
 	elif command -v xdg-open >/dev/null 2>&1; then \
 		xdg-open http://localhost:8089; \
 	else \
-		echo "Browser'ı manuel olarak açın: http://localhost:8089"; \
+		echo "Open your browser: http://localhost:8089"; \
 	fi
 
-# Build komutları
-build-images: ## Docker image'lerini build et
-	@echo "$(GREEN)🐳 Docker image'leri build ediliyor...$(NC)"
+# Build commands
+build-images: ## Build Docker images
+	@echo "$(GREEN)🐳 Building Docker images...$(NC)"
 	@docker build -t k8s-test-lab/api:latest ./api
 	@docker build -t k8s-test-lab/locust:latest ./load-test
 	@k3d image import k8s-test-lab/api:latest -c $(CLUSTER_NAME)
 	@k3d image import k8s-test-lab/locust:latest -c $(CLUSTER_NAME)
 
-# Docker Compose komutları
-docker-up: ## Docker Compose ile servisleri başlat
-	@echo "$(GREEN)🐳 Docker Compose servisleri başlatılıyor...$(NC)"
+# Docker Compose commands
+docker-up: ## Start services with Docker Compose
+	@echo "$(GREEN)🐳 Starting Docker Compose services...$(NC)"
 	@docker-compose up -d
-	@echo "$(GREEN)✅ Docker Compose hazır$(NC)"
+	@echo "$(GREEN)✅ Docker Compose ready$(NC)"
 	@echo ""
-	@echo "Docker Compose Portları:"
+	@echo "Docker Compose Ports:"
 	@echo "  API: http://localhost:18000"
 	@echo "  Locust: http://localhost:18089"
 	@echo "  Grafana: http://localhost:13000"
 	@echo "  Prometheus: http://localhost:19090"
 
-docker-down: ## Docker Compose servislerini durdur
-	@echo "$(YELLOW)🛑 Docker Compose servisleri durduruluyor...$(NC)"
+docker-down: ## Stop Docker Compose services
+	@echo "$(YELLOW)🛑 Stopping Docker Compose services...$(NC)"
 	@docker-compose down
-	@echo "$(GREEN)✅ Docker Compose durduruldu$(NC)"
+	@echo "$(GREEN)✅ Docker Compose stopped$(NC)"
 
-docker-logs: ## Docker Compose loglarını göster
+docker-logs: ## Show Docker Compose logs
 	@docker-compose logs -f
 
-# Yardımcı fonksiyonlar
-wait-ready: ## Tüm pod'ların hazır olmasını bekle
-	@echo "$(YELLOW)⏳ Pod'lar hazır olana kadar bekleniyor...$(NC)"
+# Helper functions
+wait-ready: ## Wait until all pods become ready
+	@echo "$(YELLOW)⏳ Waiting for pods to become ready...$(NC)"
 	@bash scripts/wait-for-ready.sh
 
-show-urls: ## Erişim URL'lerini göster
+show-urls: ## Show access URLs
 	@echo ""
-	@echo "$(GREEN)🔗 Erişim Noktaları:$(NC)"
+	@echo "$(GREEN)🔗 Access Points:$(NC)"
 	@echo ""
 	@echo "  API:                http://localhost:8080"
-	@echo "  API Docs:           http://localhost:8080/docs"
 	@echo "  Locust UI:          http://localhost:8089"
 	@echo "  Grafana:            http://localhost:3000 (admin/admin)"
 	@echo "  Prometheus:         http://localhost:9090"
 	@echo "  K8s Dashboard:      http://localhost:8001"
 	@echo ""
-	@echo "$(YELLOW)💡 İpucu: 'make load-test' ile test başlatın$(NC)"
+	@echo "$(YELLOW)💡 Tip: run 'make load-test' to start testing$(NC)"
 
-# Hata ayıklama
-debug: ## Debug bilgilerini göster
-	@echo "$(YELLOW)🔍 Debug bilgileri:$(NC)"
+# Debugging
+debug: ## Show debug info
+	@echo "$(YELLOW)🔍 Debug info:$(NC)"
 	@echo "Cluster: $(CLUSTER_NAME)"
 	@echo "Namespace: $(NAMESPACE)"
 	@echo "Kubeconfig: $(KUBECONFIG)"
@@ -232,33 +231,33 @@ debug: ## Debug bilgilerini göster
 	@echo ""
 	@docker ps --filter "label=app=k8s-test-lab"
 
-debug-pods: ## Pod hatalarını göster
-	@echo "$(YELLOW)🔍 Pod durumları:$(NC)"
+debug-pods: ## Show pod errors/state
+	@echo "$(YELLOW)🔍 Pod states:$(NC)"
 	@kubectl get pods -n $(NAMESPACE) -o wide
 	@echo ""
-	@echo "$(YELLOW)📜 Hatalı pod'lar:$(NC)"
+	@echo "$(YELLOW)📜 Non-running pods:$(NC)"
 	@kubectl get pods -n $(NAMESPACE) --field-selector=status.phase!=Running,status.phase!=Succeeded
 	@echo ""
-	@echo "$(YELLOW)📋 Pod olayları:$(NC)"
+	@echo "$(YELLOW)📋 Pod events:$(NC)"
 	@kubectl get events -n $(NAMESPACE) --sort-by='.lastTimestamp' | tail -20
 
-troubleshoot: ## Sorun giderme bilgileri
-	@echo "$(YELLOW)🔍 Sorun giderme bilgileri:$(NC)"
+troubleshoot: ## Troubleshooting information
+	@echo "$(YELLOW)🔍 Troubleshooting info:$(NC)"
 	@echo ""
-	@echo "1. Pod durumları:"
+	@echo "1. Pod states:"
 	@kubectl get pods -n $(NAMESPACE) -o wide
 	@echo ""
 	@echo "2. Pod describe (API):"
 	@kubectl describe pod -l app=api -n $(NAMESPACE) | grep -A 10 "Events:"
 	@echo ""
-	@echo "3. Pod logları (API):"
-	@kubectl logs -l app=api -n $(NAMESPACE) --tail=20 || echo "Log yok"
+	@echo "3. Pod logs (API):"
+	@kubectl logs -l app=api -n $(NAMESPACE) --tail=20 || echo "No logs"
 	@echo ""
 	@echo "4. Docker images:"
 	@docker images | grep k8s-test-lab || echo "Local image bulunamadı"
 	@echo ""
 	@echo "5. k3d images:"
-	@docker exec k3d-$(CLUSTER_NAME)-server-0 crictl images | grep k8s-test-lab || echo "k3d'de image bulunamadı"
+	@docker exec k3d-$(CLUSTER_NAME)-server-0 crictl images | grep k8s-test-lab || echo "No images in k3d"
 
 # Monitoring kurulumu
 monitoring: ## Prometheus ve Grafana'yı kur

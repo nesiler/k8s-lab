@@ -39,9 +39,9 @@ make load-test  # open Locust UI
 ```
 
 ### Documentation
-- Project details: ./PROJECT.md
-- API reference: ./API.md
-- Troubleshooting: ./TROUBLESHOOTING.md
+- [PROJECT.md](PROJECT.md)
+- [API.md](API.md)
+- [TROUBLESHOOTING.md](TROUBLESHOOTING.md)
 
 ### Clone
 ```bash
@@ -50,4 +50,4 @@ cd k8s-lab
 ```
 
 ### License
-MIT — see LICENSE.
+MIT — see [LICENSE](LICENSE).
