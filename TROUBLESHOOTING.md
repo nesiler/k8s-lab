@@ -151,7 +151,7 @@ make test-metrics
 # Generate some API traffic
 for i in {1..10}; do
   curl http://localhost:8080/health
-  curl http://localhost:8080/tasks
+  curl http://localhost:8080/stats
   sleep 1
 done
 
@@ -237,3 +237,49 @@ If you're still experiencing problems:
    - Kubernetes version (`kubectl version`)
    - Complete error messages
    - Output of `make test-metrics` 
+
+---
+
+## Quick Diagnostics
+```bash
+# Test all metrics endpoints
+make test-metrics
+
+# Check system status
+make status
+
+# View logs
+make logs
+```
+
+## Additional Common Issues
+
+### Port Conflicts
+```bash
+lsof -i :8080,8089,3000,9090,8001
+kill -9 <PID>
+```
+
+### Cluster Issues
+```bash
+make clean
+make start
+```
+
+### Resource Limits
+- Memory: 8GB+
+- CPU: 4 cores+
+- Disk: 20GB+ free
+
+### Pods Not Starting
+```bash
+kubectl get pods -n test-lab
+kubectl logs -n test-lab <pod-name>
+kubectl get events -n test-lab
+```
+
+### Load Balancer Issues
+```bash
+kubectl get svc -n test-lab
+kubectl port-forward -n test-lab svc/api-service 8080:80
+```
