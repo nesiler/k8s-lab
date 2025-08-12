@@ -50,4 +50,4 @@ cd k8s-lab
 ```
 
 ### License
-MIT — see [LICENSE](LICENSE).
+GPL — see [LICENSE](LICENSE).
